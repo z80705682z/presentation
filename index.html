@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>包裝食品營養標示自動試算與合規檢驗儀表板</title>
+  
+  <!-- CSS Stylesheet -->
+  
+  <!-- Remix Icons for Premium UI Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+  <script type="module" crossorigin src="/presentation/assets/index-fWv2idWN.js"></script>
+  <link rel="stylesheet" crossorigin href="/presentation/assets/index-DWN3uUV8.css">
+</head>
+<body>
+
+  <!-- App Header -->
+  <header>
+    <div class="header-logo">
+      <i class="ri-heart-pulse-fill"></i>
+      <div>
+        <h1>營養標示自動試算儀表板</h1>
+        <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">符合中華民國衛福部包裝食品規範</p>
+      </div>
+      <span>v2.0 Beta</span>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div style="display: flex; gap: 0.5rem; background: var(--primary-light); padding: 0.25rem; border-radius: 8px; border: 1px solid var(--border-color);">
+      <button class="btn btn-secondary btn-sm active" id="tabCalcBtn" style="border: none; background: var(--bg-card); color: var(--primary); font-weight: 600;">
+        <i class="ri-calculator-line"></i> 試算儀表板
+      </button>
+      <button class="btn btn-secondary btn-sm" id="tabPlaygroundBtn" style="border: none; background: transparent; color: var(--text-secondary);">
+        <i class="ri-play-circle-line"></i> 流程圖 Playground
+      </button>
+    </div>
+    
+    <div class="header-actions">
+      <button class="btn btn-secondary btn-sm" id="btnOpenCustomModal">
+        <i class="ri-add-circle-line"></i> 新增自訂原料
+      </button>
+      <button class="btn-icon" id="themeToggle" title="切換主題">
+        <i class="ri-moon-line"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main View Container with Tabs -->
+  <div id="calculatorView" class="dashboard-container">
+    
+    <!-- Left Column: Input Form & Recipe Manager -->
+    <aside class="main-panel" style="gap: 1.25rem;">
+      
+      <!-- Input Recipe Ingredients Card -->
+      <div class="card">
+        <div class="card-title">
+          <i class="ri-file-list-3-line"></i>
+          <span>第一步：輸入配方原料</span>
+        </div>
+        
+        <div class="form-group autocomplete-container">
+          <label class="form-label" for="ingSearch">搜尋食品營養庫原料名稱</label>
+          <input type="text" class="form-control" id="ingSearch" placeholder="例如：低筋麵粉、砂糖、雞蛋..." autocomplete="off">
+          <!-- Autocomplete Dropdown -->
+          <ul class="autocomplete-dropdown" id="autocompleteDropdown"></ul>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="ingWeight">配方克數 (g)</label>
+            <input type="number" class="form-control" id="ingWeight" placeholder="例如：250" min="0.1" step="any">
+          </div>
+          <div class="form-group" style="justify-content: flex-end;">
+            <button class="btn btn-primary" id="btnAddIngredient" style="width: 100%;">
+              <i class="ri-add-line"></i> 加入配方
+            </button>
+          </div>
+        </div>
+        
+        <div style="border-top: 1px solid var(--border-color); margin-top: 0.5rem; padding-top: 0.75rem;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem; font-weight: 600;">
+            <span>目前原料清單</span>
+            <span style="color: var(--primary);">原料總重: <span id="totalRawWeightSpan">0.0 g</span></span>
+          </div>
+          
+          <!-- Ingredient List Scroll Area -->
+          <div class="ingredient-list" id="ingredientList">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Cooked Weight Loss & Servings Settings Card -->
+      <div class="card">
+        <div class="card-title">
+          <i class="ri-settings-4-line"></i>
+          <span>第二步：烘焙設定與包裝份量</span>
+        </div>
+        
+        <div class="settings-section">
+          <div class="form-group">
+            <label class="form-label" for="cookedWeight">成品總重量 (g) <i class="ri-question-line" title="烹調烘焙後的實際重量，會自動換算水份蒸發流失"></i></label>
+            <input type="number" class="form-control" id="cookedWeight" placeholder="自動代入原料總重" min="0.1" step="any">
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="servingSize">每一份量 (g)</label>
+              <input type="number" class="form-control" id="servingSize" value="50" min="0.1" step="any">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="servings">本包裝含 (份)</label>
+              <input type="number" class="form-control" id="servings" value="10" min="0.1" step="any">
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-success" id="btnFinishRecipe" disabled style="font-weight: 600; padding: 0.875rem;">
+          <i class="ri-check-double-line"></i> 結束配方輸入並開始試算
+        </button>
+      </div>
+      
+    </aside>
+
+    <!-- Right Column: Interactive Dashboard Outputs & Auditor -->
+    <main class="main-panel">
+      
+      <!-- Current State Indicator -->
+      <div class="step-indicator">
+        <div class="step-item active" id="stepEdit">
+          <div class="step-badge">1</div>
+          <span>原料輸入中</span>
+        </div>
+        <div class="step-item" id="stepCalc">
+          <div class="step-badge">2</div>
+          <span>合規檢查與標籤輸出</span>
+        </div>
+      </div>
+
+      <!-- PANEL 1: Initial/Editing State Welcome Screen -->
+      <div id="editPanel" class="card" style="text-align: center; padding: 4rem 2rem; display: flex; align-items: center; justify-content: center; min-height: 400px;">
+        <div style="max-width: 450px;">
+          <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--primary-light); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;">
+            <i class="ri-calculator-line" style="font-size: 2.5rem; color: var(--primary);"></i>
+          </div>
+          <h2 style="margin-bottom: 0.75rem; font-weight: 700;">營養標示試算準備就緒</h2>
+          <p style="color: var(--text-secondary); font-size: 0.95rem; line-height: 1.6;">
+            請於左側搜尋「台灣食品營養資料庫」的預設食品原料，並輸入您的配方克數。設定完成品重量與包裝份量後，按下「結束配方輸入」按鈕，系統將自動進行稽核與生成標準標籤。
+          </p>
+        </div>
+      </div>
+
+      <!-- PANEL 2: Calculated Outputs & Label Compliance Preview (Hidden until finished button click) -->
+      <div id="outputPanel" class="output-grid" style="display: none;">
+        
+        <!-- Left Side of Outputs: Draft Details, Compliance Results & Pie Chart -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+          
+          <!-- Compliance Status Box -->
+          <div class="compliance-auditor">
+            <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+              <i class="ri-shield-check-line" style="color: var(--primary);"></i> 台灣衛福部標示法規指引稽核結果
+            </h3>
+            <div id="complianceContainer">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Calculated Draft Values -->
+          <div class="card">
+            <div class="card-title">
+              <i class="ri-draft-line"></i>
+              <span>營養成分加總草稿 (未修約修整前)</span>
+            </div>
+            <div class="table-responsive">
+              <table class="draft-table">
+                <thead>
+                  <tr>
+                    <th>成分項目</th>
+                    <th>配方總含量</th>
+                    <th>每 100g 熟重含量</th>
+                  </tr>
+                </thead>
+                <tbody id="draftTableBody">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Pie Chart Visualization -->
+          <div class="card">
+            <div class="card-title">
+              <i class="ri-pie-chart-2-line"></i>
+              <span>三大營養素熱量貢獻佔比 (每份為基準)</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="nutritionChart" width="350" height="200"></canvas>
+            </div>
+          </div>
+          
+        </div>
+
+        <!-- Right Side of Outputs: Official Sticker & Export Panel -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+          
+          <!-- Sticker Label Preview Card -->
+          <div class="card" style="align-items: center;">
+            <div class="card-title" style="width: 100%;">
+              <i class="ri-file-shield-2-line"></i>
+              <span>中華民國標準規格預覽</span>
+            </div>
+            
+            <div class="taiwan-nutrition-label-container" style="margin-top: 0.5rem;">
+              <div id="finalLabelContainer">
+                <!-- Rendered Sticker Table via JS -->
+              </div>
+            </div>
+
+            <div style="width: 100%; border-top: 1px solid var(--border-color); padding-top: 1rem; display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
+              <button class="btn btn-primary" id="btnExportPng" style="width: 100%;">
+                <i class="ri-image-line"></i> 匯出為標籤 PNG 貼紙
+              </button>
+              <button class="btn btn-secondary" id="btnCopyHtml" style="width: 100%;">
+                <i class="ri-code-s-slash-line"></i> 複製貼紙 HTML 碼
+              </button>
+              <button class="btn btn-secondary btn-danger" id="btnBackToEdit" style="width: 100%;">
+                <i class="ri-edit-line"></i> 返回修改配方原料
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Playground View Container (Hidden by default) -->
+  <div id="playgroundView" class="dashboard-container" style="display: none; grid-template-columns: 1fr;">
+    <div class="card" style="grid-column: 1 / -1; min-height: 500px;">
+      <div class="card-title">
+        <i class="ri-play-circle-line"></i>
+        <span>系統核心流程圖 Playground (Mermaid.js Live)</span>
+      </div>
+      <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: -0.5rem; line-height: 1.5;">
+        這是一個即時流程圖 Playground。您可以在左側修改流程圖的 Mermaid 程式碼，點擊「重新渲染」後右側就會即時顯示渲染後的圖表！
+      </p>
+      
+      <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin-top: 0.5rem;" id="playgroundGrid">
+        <!-- Code Editor -->
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label class="form-label" style="font-weight: 600;">Mermaid 流程圖原始碼</label>
+            <button class="btn btn-primary btn-sm" id="btnUpdateMermaid">
+              <i class="ri-refresh-line"></i> 重新渲染圖表
+            </button>
+          </div>
+          <textarea class="form-control" id="mermaidCodeInput" rows="22" style="font-family: monospace; font-size: 0.85rem; line-height: 1.4; resize: vertical; height: 400px; background: rgba(0,0,0,0.02); color: var(--text-primary);">
+flowchart TD
+    classDef startEnd fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e293b;
+    classDef process fill:#f1f5f9,stroke:#64748b,stroke-width:1px,color:#0f172a;
+    classDef check fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+    classDef export fill:#ecfdf5,stroke:#059669,stroke-width:2px,color:#065f46;
+
+    Start([開始試算]) --> Step1["步驟一：輸入原料與重量"]
+    
+    subgraph InputPhase["1. 配方輸入與參數設定"]
+        Step1 --> InputSearch{搜尋原料資料庫}
+        InputSearch -->|存在於預設庫| SelectDB["點選原料並輸入克數"]
+        InputSearch -->|不存在於預設庫| AddCustom["新增自訂原料並輸入數值"]
+        SelectDB --> List["加入配方清單"]
+        AddCustom --> List
+        List --> Step2["步驟二：設定包裝與熟化參數"]
+        Step2 --> SetCooked["輸入成品總重量"]
+        Step2 --> SetServings["輸入每一份量及本包裝含份數"]
+    end
+
+    SetCooked --> ClickFinish{點擊結束配方輸入}
+    
+    subgraph CalcPhase["2. 核心密度計算與損耗調整"]
+        ClickFinish --> SumRaw["加總配方各原料營養素"]
+        SumRaw --> AdjLoss["計算損耗調整：每100g熟重密度"]
+    end
+
+    AdjLoss --> Step3["步驟三：法規合規性稽核"]
+
+    subgraph AuditPhase["3. 中華民國衛福部法規檢驗"]
+        Step3 --> Aud1{成品熟重合理？}
+        Aud1 -->|否| Warn1["警告：可能加水未申報"]
+        Aud1 -->|是| Aud2{"份量 x 份數等於成品重？"}
+        
+        Aud2 -->|否| Warn2["錯誤：份量份數邏輯不符"]
+        Aud2 -->|是| Aud3{"碳水是否大於等於糖 + 纖維？"}
+        
+        Aud3 -->|否| Warn3["錯誤：申報數值衝突"]
+        Aud3 -->|是| AudPass["稽核通過 / 生成報告"]
+    end
+
+    Warn1 --> Aud2
+    Warn2 --> Aud3
+    Warn3 --> AudPass
+
+    AudPass --> Step4["步驟四：修約與0界值處理"]
+
+    subgraph RoundingPhase["4. 台灣官方修約與零值轉換"]
+        Step4 --> R_Sodium["鈉含量：四捨五入至整數，小於等於5mg標示0"]
+        Step4 --> R_Cal["熱量：小於等於4kcal標示0"]
+        Step4 --> R_Fat["反式脂肪：小於等於0.3g標示0"]
+        Step4 --> R_Sat["飽和脂肪：小於等於0.1g標示0"]
+        Step4 --> R_Other["蛋白質、脂肪、碳水、糖、纖維：四捨五入至小數一位，小於0.5g標示0"]
+    end
+
+    R_Sodium --> OutputFormat
+    R_Cal --> OutputFormat
+    R_Fat --> OutputFormat
+    R_Sat --> OutputFormat
+    R_Other --> OutputFormat
+
+    subgraph OutputPhase["5. 格式化輸出與匯出"]
+        OutputFormat["依規定順序排列表格：\n1.熱量 2.蛋白質 3.脂肪\n（含飽和與反式） 4.碳水化合物\n（含糖與膳食纖維） 5.鈉"] --> RenderUI["產生標準黑白雙框標籤貼紙"]
+        RenderUI --> DrawChart["繪製三大營養素熱量圓餅圖"]
+        RenderUI --> ExportPng["下載高解析度標籤 PNG 貼紙"]
+        RenderUI --> CopyHtml["複製網頁用 HTML / CSS 程式碼"]
+    end
+
+    ExportPng --> EndNode([完成標籤製作])
+    CopyHtml --> EndNode
+
+    class Start EndNode startEnd;
+    class Step1 Step2 Step3 Step4 List SelectDB AddCustom SetCooked SetServings SumRaw AdjLoss R_Sodium R_Cal R_Fat R_Sat R_Other RenderUI DrawChart process;
+    class InputSearch ClickFinish Aud1 Aud2 Aud3 check;
+    class ExportPng CopyHtml export;
+          </textarea>
+        </div>
+        
+        <!-- Live Preview -->
+        <div class="card" style="background: #ffffff; color: #1e293b; border: 1px solid var(--border-color); overflow: auto; min-height: 450px; display: flex; align-items: flex-start; justify-content: center; padding: 1.5rem;">
+          <div class="mermaid" id="mermaidRenderOutput" style="width: 100%; display: flex; justify-content: center;">
+            <!-- Dynamic Mermaid diagram will render here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Custom Food Ingredient Modal -->
+  <div class="modal-overlay" id="customModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">新增自訂原料至資料庫</h3>
+        <button class="btn-icon btn-sm" id="btnCloseModal" style="border: none;">
+          <i class="ri-close-line" style="font-size: 1.25rem;"></i>
+        </button>
+      </div>
+      
+      <form id="modalForm" onsubmit="event.preventDefault();">
+        <div style="display: flex; flex-direction: column; gap: 0.875rem;">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="custName">原料名稱 (必填)</label>
+              <input type="text" class="form-control" id="custName" placeholder="例如：自製蔓越莓乾" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="custCategory">原料類別</label>
+              <select class="form-control" id="custCategory">
+                <option value="穀物類">穀物雜糧類</option>
+                <option value="油脂類">油脂堅果類</option>
+                <option value="糖類">糖與調味類</option>
+                <option value="乳品類">乳製品類</option>
+                <option value="水果類">水果與蔬菜類</option>
+                <option value="調味類">其他添加物類</option>
+              </select>
+            </div>
+          </div>
+
+          <p style="font-size: 0.75rem; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 0.25rem; font-weight: 600; margin-top: 0.25rem;">以下輸入每 100g 含有的營養成份</p>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="custCalories">熱量 (kcal)</label>
+              <input type="number" class="form-control" id="custCalories" min="0" step="any" value="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="custProtein">蛋白質 (g)</label>
+              <input type="number" class="form-control" id="custProtein" min="0" step="any" value="0">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="custFat">脂肪 (g)</label>
+              <input type="number" class="form-control" id="custFat" min="0" step="any" value="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="custSaturatedFat">飽和脂肪 (g)</label>
+              <input type="number" class="form-control" id="custSaturatedFat" min="0" step="any" value="0">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="custTransFat">反式脂肪 (g)</label>
+              <input type="number" class="form-control" id="custTransFat" min="0" step="any" value="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="custCarbohydrate">碳水化合物 (g)</label>
+              <input type="number" class="form-control" id="custCarbohydrate" min="0" step="any" value="0">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="custSugar">糖 (g)</label>
+              <input type="number" class="form-control" id="custSugar" min="0" step="any" value="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="custDietaryFiber">膳食纖維 (g)</label>
+              <input type="number" class="form-control" id="custDietaryFiber" min="0" step="any" value="0">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="custSodium">鈉 (mg)</label>
+            <input type="number" class="form-control" id="custSodium" min="0" step="any" value="0">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCloseModal">取消</button>
+          <button type="button" class="btn btn-primary" id="btnSaveCustomFood">儲存並建立原料</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast">
+    <i class="ri-information-fill"></i>
+    <span>提示訊息</span>
+  </div>
+
+  <!-- JS Code -->
+  <script src="app.js"></script>
+  
+  <!-- Mermaid.js library and initialization -->
+</body>
+</html>
