@@ -5,12 +5,4 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   base: '/presentation/',
   plugins: [react()],
-  css: {
-    postcss: {
-      plugins: [
-        require('tailwindcss'),
-        require('autoprefixer'),
-      ],
-    },
-  },
 })
